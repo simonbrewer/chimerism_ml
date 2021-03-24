@@ -1,0 +1,192 @@
+---
+title: "Chimerism dataset final - random forest (probability only)"
+knit: (function(input_file, encoding) {
+  out_dir <- 'docs';
+  rmarkdown::render(input_file,
+ encoding=encoding,
+ output_file=file.path(dirname(input_file), out_dir, 'rf_predict.html'))})
+author: "Simon Brewer"
+date: "3/24/2021"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    fig_caption: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries
+
+Set random seed for reproducibility
+```{r}
+set.seed(1234)
+```
+
+```{r message=FALSE}
+library(tidyverse)
+library(ggpubr)
+library(randomForest)
+library(vip)
+library(pdp)
+```
+
+## Data
+
+Read in data
+```{r}
+all.df <<- read.csv("./data/all.df.csv")
+```
+
+Make outcome a binary variable (0/1 relapse)
+```{r}
+all.df$rbin <- factor(all.df$rbin, levels = c("yes", "no"))
+```
+
+Filter out any tests that are post-relapse
+```{r}
+all.df <- all.df[which(all.df$bdate < all.df$dor | is.na(all.df$dor)), ]
+```
+
+Filter out relapse >720 days
+```{r}
+all.df <- all.df[which(all.df$rbin == "no" | all.df$rtime < 720),]
+```
+
+Filter out any missing tests
+```{r}
+all.df <- all.df[!is.na(all.df$bmc_cdw) & !is.na(all.df$bmc_cd3) & 
+                  !is.na(all.df$bmc_cd15) & !is.na(all.df$bmc_cd34) &
+                  !is.na(all.df$pbc_cdw) & !is.na(all.df$pbc_cd3) & 
+                  !is.na(all.df$pbc_cd15) & !is.na(all.df$pbc_cd34),]
+```
+
+## Random forest
+
+First set the formula (this has quite a long list of covariates)
+```{r}
+f1 <- rbin ~ txage + sex + rstatprtx + hla + 
+  tbi + abd_ci_mtx_mmi + agvhd + cgvhd +
+  bmc_cdw + bmc_cd3 + bmc_cd15 + bmc_cd34 + 
+  pbc_cdw + pbc_cd3 + pbc_cd15 + pbc_cd34
+```
+
+Run random forest (no training/testing - need to add that)
+```{r}
+all.rf <- randomForest(f1, all.df, mtry = 6, nodesize = 2)
+```
+
+How did it do?
+```{r}
+all.rf
+```
+
+## Variable importance
+
+```{r}
+vip(all.rf, num_features = 20, scale = TRUE)
+```
+
+## Partial plots
+
+```{r warning=FALSE}
+myvars <- c("txage", 
+           "bmc_cdw", "bmc_cd3", "bmc_cd15", "bmc_cd34",
+           "pbc_cdw", "pbc_cd3", "pbc_cd15", "pbc_cd34")
+
+for (i in myvars) {
+  
+  p1 <- partial(all.rf, pred.var = i, prob = TRUE,
+               plot = TRUE, rug = TRUE, 
+        plot.engine = "ggplot2") + theme_light() + 
+    ggtitle(paste("PDP:", i)) 
+  print(p1)
+}
+```
+
+### All peripheral blood lineaages
+
+```{r}
+pw <- partial(all.rf, pred.var = "pbc_cdw", prob = TRUE) 
+p3 <- partial(all.rf, pred.var = "pbc_cd3", prob = TRUE) 
+p15 <- partial(all.rf, pred.var = "pbc_cd15", prob = TRUE) 
+p34 <- partial(all.rf, pred.var = "pbc_cd34", prob = TRUE) 
+
+plot.df <- data.frame(test = c(pw$pbc_cdw, p3$pbc_cd3, p15$pbc_cd15, p34$pbc_cd34),
+                      yhat = c(pw$yhat, p3$yhat, p15$yhat, p34$yhat),
+                      type = c(rep("cdw", nrow(pw)),
+                               rep("cd3", nrow(p3)),
+                               rep("cd15", nrow(p15)),
+                               rep("cd34", nrow(p34))
+                               ))
+
+ggline(plot.df, x = "test", y = "yhat", col = "type", 
+       plot_type = "l", size = 1.5, main = "Chimerism values (PB, prob)")
+```
+
+
+### All bone marrow lineaages
+
+```{r}
+pw <- partial(all.rf, pred.var = "bmc_cdw", prob = TRUE) 
+p3 <- partial(all.rf, pred.var = "bmc_cd3", prob = TRUE) 
+p15 <- partial(all.rf, pred.var = "bmc_cd15", prob = TRUE) 
+p34 <- partial(all.rf, pred.var = "bmc_cd34", prob = TRUE) 
+
+plot.df <- data.frame(test = c(pw$bmc_cdw, p3$bmc_cd3, p15$bmc_cd15, p34$bmc_cd34),
+                      yhat = c(pw$yhat, p3$yhat, p15$yhat, p34$yhat),
+                      type = c(rep("cdw", nrow(pw)),
+                               rep("cd3", nrow(p3)),
+                               rep("cd15", nrow(p15)),
+                               rep("cd34", nrow(p34))
+                               ))
+
+ggline(plot.df, x = "test", y = "yhat", col = "type", 
+       plot_type = "l", size = 1.5, main = "Chimerism values (BM, prob)")
+```
+
+
+## 2D plots
+
+```{r warning=FALSE}
+for (i in myvars[-1]) {
+  # Compute partial dependence data for lstat and rm
+  pd <- partial(all.rf, pred.var = c("txage", i), chull = TRUE, prob = TRUE)
+  
+  # Default PDP
+  pdp1 <- plotPartial(pd)
+
+  pdp2 <- plotPartial(pd, levelplot = FALSE, zlab = "rbin", colorkey = TRUE,
+                      screen = list(z = 160, x = -60))
+  
+  grid.arrange(pdp1, pdp2, nrow = 1) 
+  
+  print(pdp1)
+
+}
+```
+
+```{r warning=FALSE}
+pd <- partial(all.rf, pred.var = c("bmc_cd3", "bmc_cd34"), chull = TRUE, prob = TRUE)
+pdp1 <- plotPartial(pd, main = "Chimerism (BM, prob)")
+
+pdp2 <- plotPartial(pd, levelplot = FALSE, zlab = "rbin", colorkey = TRUE,
+                    screen = list(z = 160, x = -60))
+
+grid.arrange(pdp1, pdp2, nrow = 1) 
+print(pdp1)
+```
+
+```{r warning=FALSE}
+pd <- partial(all.rf, pred.var = c("pbc_cd3", "pbc_cd34"), chull = TRUE, prob = TRUE)
+pdp1 <- plotPartial(pd, main = "Chimerism (PB, prob)")
+
+pdp2 <- plotPartial(pd, levelplot = FALSE, zlab = "rbin", colorkey = TRUE,
+                    screen = list(z = 160, x = -60))
+
+grid.arrange(pdp1, pdp2, nrow = 1) 
+print(pdp1)
+```
+

@@ -17,12 +17,14 @@ output:
 ---
 
 
-- [Bone marrow chimerism plots][bmc_plots]
-- [Peripheral blood chimerism plots][pbc_plots]
-- [Random forest tuning][rf_tuning]
+- [Bone marrow chimerism plots][bmc_plots]: descriptive plots
+- [Peripheral blood chimerism plots][pbc_plots]: descriptive plots
+- [Random forest tuning][rf_tuning]: tuning and cross validation
+- [Random forest results][rf_predict]: partial dependency plots
 
 [bmc_plots]: https://simonbrewer.github.io/chimerism_ml/plots_bmc.html
 [pbc_plots]: https://simonbrewer.github.io/chimerism_ml/plots_pbc.html
 [rf_tuning]: https://simonbrewer.github.io/chimerism_ml/rf_tuning.html
+[rf_predict]: https://simonbrewer.github.io/chimerism_ml/rf_predict.html
 
 
