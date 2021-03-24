@@ -4,13 +4,13 @@ library(ggpubr)
 library(lubridate)
 
 myfun = function(x) {
-  as.numeric(x[1]) / as.numeric(x[2])
+  #as.numeric(x[1]) / as.numeric(x[2]) ## Proportion
+  as.numeric(x[2]) - as.numeric(x[1]) ## Number mismatches
 }
 
-chim_file = "./data/Chimerism prediction of relapse internal copy dcs corrected10-30.csv"
-
+## Read data
+chim_file = "./data/Chimerism prediction of relapse internal copy v8 g_mtx_mmf_ci_abd merged.csv"
 dat = read.csv(chim_file)
-
 names(dat)
 
 ## Add ID column
@@ -19,6 +19,8 @@ dat$ID = as.factor(seq(1:nrow(dat)))
 ## Convert hla to proportion
 dat$HLA2 <- unlist(lapply(strsplit(dat$HLA, "/"), myfun))
 
+## ------------------------------------------------------------------------- ##
+## BMC values
 ## Extract dates
 bmc.df = dat[,c("ID", names(dat[,grep(glob2rx("D*MC"), names(dat))]))]
 
@@ -30,21 +32,22 @@ bmc.df$txage = dat$TXAGE
 bmc.df$relapse = dat$R
 bmc.df$sex = dat$G
 bmc.df$rstatprtx = dat$RSTATPRTX
-bmc.df$g = dat$G.1
+#bmc.df$g = dat$G.1
 bmc.df$hla = dat$HLA2
 bmc.df$tbi = dat$TBI
-bmc.df$abd = dat$aBD
-bmc.df$ci = dat$CI
-bmc.df$mtx = dat$MTX
-bmc.df$mmf = dat$MMF
-bmc.df$e = dat$E
+#bmc.df$abd = dat$aBD
+#bmc.df$ci = dat$CI
+#bmc.df$mtx = dat$MTX
+#bmc.df$mmf = dat$MMF
+#bmc.df$e = dat$E
+bmc.df$abd_ci_mtx_mmi = dat$G.HLA.GVHD.prophy
 bmc.df$agvhd = dat$aGVHD
 bmc.df$cgvhd = dat$cGVHD
 
 ## Melt to long format
 bmc.df = melt(bmc.df, id.vars = c("ID", "dot", "dor", "txage", "relapse",
-                                  "sex", "rstatprtx", "g", "hla", "tbi",
-                                  "abd", "ci", "mtx", "mmf", "e", "agvhd", "cgvhd"), 
+                                  "sex", "rstatprtx", "hla", "tbi",
+                                  "abd_ci_mtx_mmi", "agvhd", "cgvhd"), 
                 variable.name = "test", value.name = "bdate")
 bmc.df$bdate = mdy(bmc.df$bdate)
 bmc.df$dot = mdy(bmc.df$dot)
@@ -73,7 +76,7 @@ bmc.df$cd3 = bmc_cd3$prop
 bmc.df$cd15 = bmc_cd15$prop
 bmc.df$cd34 = bmc_cd34$prop
 
-write.csv(bmc.df, "bmc.df.csv", row.names = FALSE)
+write.csv(bmc.df, "./data/bmc.df.csv", row.names = FALSE)
 
 ## Peripheral blood
 
@@ -98,21 +101,22 @@ pbc.df$txage = dat$TXAGE
 pbc.df$relapse = dat$R
 pbc.df$sex = dat$G
 pbc.df$rstatprtx = dat$RSTATPRTX
-pbc.df$g = dat$G.1
+#pbc.df$g = dat$G.1
 pbc.df$hla = dat$HLA2
 pbc.df$tbi = dat$TBI
-pbc.df$abd = dat$aBD
-pbc.df$ci = dat$CI
-pbc.df$mtx = dat$MTX
-pbc.df$mmf = dat$MMF
-pbc.df$e = dat$E
+#pbc.df$abd = dat$aBD
+#pbc.df$ci = dat$CI
+#pbc.df$mtx = dat$MTX
+#pbc.df$mmf = dat$MMF
+#pbc.df$e = dat$E
+pbc.df$abd_ci_mtx_mmi = dat$G.HLA.GVHD.prophy
 pbc.df$agvhd = dat$aGVHD
 pbc.df$cgvhd = dat$cGVHD
 
 ## Melt to long format
 pbc.df = melt(pbc.df, id.vars = c("ID", "dot", "dor", "txage", "relapse",
-                                  "sex", "rstatprtx", "g", "hla", "tbi",
-                                  "abd", "ci", "mtx", "mmf", "e", "agvhd", "cgvhd"), 
+                                  "sex", "rstatprtx", "hla", "tbi",
+                                  "abd_ci_mtx_mmi", "agvhd", "cgvhd"), 
               variable.name = "test", value.name = "pdate")
 pbc.df$pdate = mdy(pbc.df$pdate)
 pbc.df$dot = mdy(pbc.df$dot)
@@ -141,7 +145,7 @@ pbc.df$cd3 = pbc_cd3$prop
 pbc.df$cd15 = pbc_cd15$prop
 pbc.df$cd34 = pbc_cd34$prop
 
-write.csv(pbc.df, "pbc.df.csv", row.names = FALSE)
+write.csv(pbc.df, "./data/pbc.df.csv", row.names = FALSE)
 
 all.df = bmc.df
 all.df$bmc_cdw = all.df$cdw
@@ -158,5 +162,5 @@ all.df$pbc_cd3 = pbc.df$cd3
 all.df$pbc_cd15 = pbc.df$cd15
 all.df$pbc_cd34 = pbc.df$cd34
 
-write.csv(all.df, "all.df.csv", row.names = FALSE)
+write.csv(all.df, "./data/all.df.csv", row.names = FALSE)
 
