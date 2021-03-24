@@ -1,0 +1,153 @@
+---
+title: "Chimerism dataset final - bone marrow"
+knit: (function(input_file, encoding) {
+  out_dir <- 'docs';
+  rmarkdown::render(input_file,
+ encoding=encoding,
+ output_file=file.path(dirname(input_file), out_dir, 'plots_bmc.html'))})
+author: "Simon Brewer"
+date: "03/24/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries
+
+```{r message=FALSE}
+library(tidyverse)
+library(reshape2)
+library(ggpubr)
+library(lubridate)
+```
+
+## Data
+
+```{r}
+all.df = read.csv("./data/all.df.csv")
+names(all.df)
+all.df$ID = as.factor(all.df$ID)
+```
+
+Remove plot relapse samples
+```{r}
+plot.df = all.df[which(all.df$bdate < all.df$dor | is.na(all.df$dor)), ]
+```
+
+### CDW proportions
+
+- Relapse vs. non-relapse
+```{r warning=FALSE}
+ggboxplot(plot.df, x = "relapse", y = "bmc_cdw", 
+          color = "relapse", add = "jitter", main = "BM CD (Whole)") +
+  stat_compare_means(label.y = 20, method = "wilcox.test") + 
+  scale_y_continuous(limits = c(0,100))
+```
+
+- Time plots
+```{r warning=FALSE}
+ggscatter(plot.df, x = "btime", y = "bmc_cdw", col = "relapse", main = "BM CD (Whole)",
+          add = "reg.line")
+p1 = ggline(plot.df, x = "btime", y = "bmc_cdw", col = "ID", 
+       facet.by = "relapse", numeric.x.axis = TRUE, main = "BM CD (Whole)")
+ggpar(p1, legend = "none")
+```
+
+- Boxplots by testing period
+```{r warning=FALSE}
+ggboxplot(plot.df, x = "test", y = "bmc_cdw", fill = "relapse", main = "BM CD (Whole)")
+```
+
+### CD3 proportions
+
+- Relapse vs. non-relapse
+```{r warning=FALSE}
+ggboxplot(plot.df, x = "relapse", y = "bmc_cd3", 
+          color = "relapse", add = "jitter", main = "BM CD3") +
+  stat_compare_means(label.y = 20, method = "wilcox.test") + 
+  scale_y_continuous(limits = c(0,100))
+```
+
+- Time plots
+```{r warning=FALSE}
+ggscatter(plot.df, x = "btime", y = "bmc_cd3", col = "relapse", main = "BM CD3",
+          add = "reg.line")
+p1 = ggline(plot.df, x = "btime", y = "bmc_cd3", col = "ID", 
+       facet.by = "relapse", numeric.x.axis = TRUE, main = "BM CD3")
+ggpar(p1, legend = "none")
+```
+
+- Boxplots by testing period
+```{r warning=FALSE}
+ggboxplot(plot.df, x = "test", y = "bmc_cd3", fill = "relapse", main = "BM CD3")
+```
+
+### CD15 proportions
+
+- Relapse vs. non-relapse
+```{r warning=FALSE}
+ggboxplot(plot.df, x = "relapse", y = "bmc_cd15", 
+          color = "relapse", add = "jitter", main = "BM CD15") +
+  stat_compare_means(label.y = 20, method = "wilcox.test") + 
+  scale_y_continuous(limits = c(0,100))
+```
+
+- Time plots
+```{r warning=FALSE}
+ggscatter(plot.df, x = "btime", y = "bmc_cd15", col = "relapse", main = "BM CD15",
+          add = "reg.line")
+p1 = ggline(plot.df, x = "btime", y = "bmc_cd15", col = "ID", 
+       facet.by = "relapse", numeric.x.axis = TRUE, main = "BM CD15")
+ggpar(p1, legend = "none")
+```
+
+- Boxplots by testing period
+```{r warning=FALSE}
+ggboxplot(plot.df, x = "test", y = "bmc_cd15", fill = "relapse", main = "BM CD15")
+```
+
+### CD34 proportions
+
+- Relapse vs. non-relapse
+```{r warning=FALSE}
+ggboxplot(plot.df, x = "relapse", y = "bmc_cd34", 
+          color = "relapse", add = "jitter", main = "BM CD34") +
+  stat_compare_means(label.y = 20, method = "wilcox.test") + 
+  scale_y_continuous(limits = c(0,100))
+```
+
+- Time plots
+```{r warning=FALSE}
+ggscatter(plot.df, x = "btime", y = "bmc_cd34", col = "relapse", main = "BM CD34",
+          add = "reg.line")
+p1 = ggline(plot.df, x = "btime", y = "bmc_cd34", col = "ID", 
+       facet.by = "relapse", numeric.x.axis = TRUE, main = "BM CD34")
+ggpar(p1, legend = "none")
+```
+
+- Boxplots by testing period
+```{r warning=FALSE}
+ggboxplot(plot.df, x = "test", y = "bmc_cd34", fill = "relapse", main = "BM CD34")
+```
+
+## Comparative plots
+
+```{r}
+plot2.df = melt(plot.df, measure.vars = c("bmc_cdw", "bmc_cd3", "bmc_cd15", "bmc_cd34"),
+                variable.name = "marker", value.name = "prop")
+```
+
+- Relapse vs. non-relapse
+```{r warning=FALSE}
+ggboxplot(plot2.df, x = "relapse", y = "prop", 
+          fill = "marker", main = "BM All markers") +
+  scale_y_continuous(limits = c(0,100))
+```
+
+- Boxplots by testing period
+```{r warning=FALSE}
+ggboxplot(plot2.df, x = "test", y = "prop", fill = "marker", 
+          facet.by = "relapse", main = "BM All markers")
+```
