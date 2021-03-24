@@ -1,0 +1,192 @@
+---
+title: "Chimerism dataset final - tuning `ranger` with **caret**"
+knit: (function(input_file, encoding) {
+  out_dir <- 'docs';
+  rmarkdown::render(input_file,
+ encoding=encoding,
+ output_file=file.path(dirname(input_file), out_dir, 'rf_tuning.html'))})
+author: "Simon Brewer"
+date: "3/24/2021"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    fig_caption: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries
+
+Set random seed for reproducibility
+```{r}
+set.seed(1234)
+```
+
+```{r message=FALSE}
+library(tidyverse)
+library(ggpubr)
+library(randomForest)
+library(vip)
+library(pdp)
+library(caret)
+```
+
+## Data
+
+Read in data
+```{r}
+all.df = read.csv("./data/all.df.csv")
+```
+
+Make outcome a binary variable (0/1 relapse)
+```{r}
+all.df$rbin = factor(all.df$rbin, levels = c("yes", "no"))
+```
+
+Filter out any tests that are post-relapse
+```{r}
+all.df = all.df[which(all.df$bdate < all.df$dor | is.na(all.df$dor)), ]
+```
+
+Filter out relapse >720 days
+```{r}
+all.df = all.df[which(all.df$rbin == "no" | all.df$rtime < 720),]
+```
+
+Filter out any missing tests
+```{r}
+all.df = all.df[!is.na(all.df$bmc_cdw) & !is.na(all.df$bmc_cd3) & 
+                  !is.na(all.df$bmc_cd15) & !is.na(all.df$bmc_cd34) &
+                  !is.na(all.df$pbc_cdw) & !is.na(all.df$pbc_cd3) & 
+                  !is.na(all.df$pbc_cd15) & !is.na(all.df$pbc_cd34),]
+```
+
+Get $p(relapse)$ for baseline model
+```{r}
+prbin = sum(as.numeric(all.df$rbin)-1) / nrow(all.df)
+```
+
+## Random forest
+
+First set the formula (note we need to drop `e` for this to work)
+```{r}
+f1 <- rbin ~ txage + sex + rstatprtx + hla + 
+  tbi + abd_ci_mtx_mmi + agvhd + cgvhd +
+  bmc_cdw + bmc_cd3 + bmc_cd15 + bmc_cd34 + 
+  pbc_cdw + pbc_cd3 + pbc_cd15 + pbc_cd34
+f1 <- rbin ~ txage + sex + rstatprtx + hla + 
+  tbi + agvhd + cgvhd +
+  bmc_cdw + bmc_cd3 + bmc_cd15 + bmc_cd34 + 
+  pbc_cdw + pbc_cd3 + pbc_cd15 + pbc_cd34
+```
+
+## Cross validation
+
+Next find patients for cross-validation
+
+```{r}
+patients = unique(sort(all.df$ID))
+npatients = length(patients)
+nfolds = 5
+pfolds = createFolds(all.df$relapse, k = nfolds)
+```
+
+Set up inner cross-validation strategy for tuning:
+
+```{r}
+ctrl <- trainControl(method = "repeatedcv",
+                     number = 5,
+                     repeats = 3,
+                     classProbs = TRUE,
+                     summaryFunction = twoClassSummary,
+                     verboseIter = FALSE)
+# ctrl <- trainControl(method = "none", verboseIter = TRUE)
+```
+
+Data frame for model results
+
+```{r}
+mod_results <- data.frame(folds = c(1:nfolds, "mean"),
+                          acc = rep(NA, nfolds+1),
+                          kappa = rep(NA, nfolds+1),
+                          sens = rep(NA, nfolds+1),
+                          spec = rep(NA, nfolds+1)
+)
+```
+
+```{r}
+base_results <- data.frame(folds = c(1:nfolds, "mean"),
+                           acc = rep(NA, nfolds+1),
+                           kappa = rep(NA, nfolds+1),
+                           sens = rep(NA, nfolds+1),
+                           spec = rep(NA, nfolds+1)
+)
+```
+
+## Tuning parameters
+
+- `mtry` (Randomly Selected Predictors)
+- `splitrule` (Splitting Rule)
+- `min.node.size` (Minimal Node Size)
+
+```{r}
+parGrid = expand.grid(mtry = seq(2,8), splitrule = "gini", min.node.size = seq(2,8))
+# parGrid = expand.grid(mtry = 2, splitrule = "gini", min.node.size = 3)
+```
+
+## $k$-fold loop
+
+```{r}
+for (i in 1:nfolds) {
+  patient_id = pfolds[[i]]
+  training = all.df[-patient_id,]
+  testing =  all.df[ patient_id,]
+  
+  ## Get baseline
+  # testing$baseline = rbinom(nrow(testing), size = 1, p = prbin)
+  testing$baseline = sample(testing$rbin)
+  
+  modFit <- train(
+    f1,
+    data = training,
+    method = "ranger",
+    ## Center and scale the predictors for the training
+    ## set and all future samples.
+    ##preProc = c("center", "scale"),
+    ## increase parameter set
+    tuneGrid = parGrid,
+    ## added:
+    # importance = 'permutation',
+    trControl = ctrl)
+  ## Plot tuning results
+  print(modFit)
+  # print(ggplot(modFit))
+  pred_test <- predict(modFit, newdata = testing)
+  results <- postResample(pred = pred_test, obs = testing$rbin)
+  mod_results$acc[i] <- results[1]
+  mod_results$kappa[i] <- results[2]
+  mod_cm = confusionMatrix(pred_test, testing$rbin)
+  mod_results$sens[i] <- mod_cm$byClass[1]
+  mod_results$spec[i] <- mod_cm$byClass[2]
+  
+  results <- postResample(pred = testing$baseline, obs = testing$rbin)
+  base_results$acc[i] <- results[1]
+  base_results$kappa[i] <- results[2]
+  base_cm = confusionMatrix(testing$baseline, testing$rbin)
+  base_results$sens[i] <- base_cm$byClass[1]
+  base_results$spec[i] <- base_cm$byClass[2]
+  
+}
+```
+
+```{r}
+mod_results[6, 2:5] = apply(mod_results[, 2:5], 2, mean, na.rm = TRUE)
+knitr::kable(mod_results, digits = 4)
+```
+```{r}
+base_results[6, 2:5] = apply(base_results[, 2:5], 2, mean, na.rm = TRUE)
+knitr::kable(base_results, digits = 4)
+```
