@@ -5,7 +5,9 @@ knit: (function(input_file, encoding) {
   rmarkdown::render(input_file,
  encoding=encoding,
  output_file=file.path(dirname(input_file), out_dir, 'rf_predict.html'))})
-author: "Simon Brewer"
+author:
+  - David C. Shyr^[Stanford Medicine, dcshyr@stanford.edu]
+  - Simon Brewer^[University of Utah, simon.brewer@geog.utah.edu]
 date: "3/24/2021"
 output:
   html_document:
@@ -58,9 +60,9 @@ all.df <- all.df[which(all.df$rbin == "no" | all.df$rtime < 720),]
 Filter out any missing tests
 ```{r}
 all.df <- all.df[!is.na(all.df$bmc_cdw) & !is.na(all.df$bmc_cd3) & 
-                  !is.na(all.df$bmc_cd15) & !is.na(all.df$bmc_cd34) &
-                  !is.na(all.df$pbc_cdw) & !is.na(all.df$pbc_cd3) & 
-                  !is.na(all.df$pbc_cd15) & !is.na(all.df$pbc_cd34),]
+                   !is.na(all.df$bmc_cd15) & !is.na(all.df$bmc_cd34) &
+                   !is.na(all.df$pbc_cdw) & !is.na(all.df$pbc_cd3) & 
+                   !is.na(all.df$pbc_cd15) & !is.na(all.df$pbc_cd34),]
 ```
 
 ## Random forest
@@ -92,15 +94,20 @@ vip(all.rf, num_features = 20, scale = TRUE)
 ## Partial plots
 
 ```{r warning=FALSE}
+myvars <- c("txage", "sex", "rstatprtx", "hla", 
+            "tbi", "abd_ci_mtx_mmi", "agvhd", "cgvhd",
+            "bmc_cdw", "bmc_cd3", "bmc_cd15", "bmc_cd34",
+            "pbc_cdw", "pbc_cd3", "pbc_cd15", "pbc_cd34")
+
 myvars <- c("txage", 
-           "bmc_cdw", "bmc_cd3", "bmc_cd15", "bmc_cd34",
-           "pbc_cdw", "pbc_cd3", "pbc_cd15", "pbc_cd34")
+            "bmc_cdw", "bmc_cd3", "bmc_cd15", "bmc_cd34",
+            "pbc_cdw", "pbc_cd3", "pbc_cd15", "pbc_cd34")
 
 for (i in myvars) {
   
   p1 <- partial(all.rf, pred.var = i, prob = TRUE,
-               plot = TRUE, rug = TRUE, 
-        plot.engine = "ggplot2") + theme_light() + 
+                plot = TRUE, rug = TRUE, 
+                plot.engine = "ggplot2") + theme_light() + 
     ggtitle(paste("PDP:", i)) 
   print(p1)
 }
@@ -120,7 +127,7 @@ plot.df <- data.frame(test = c(pw$pbc_cdw, p3$pbc_cd3, p15$pbc_cd15, p34$pbc_cd3
                                rep("cd3", nrow(p3)),
                                rep("cd15", nrow(p15)),
                                rep("cd34", nrow(p34))
-                               ))
+                      ))
 
 ggline(plot.df, x = "test", y = "yhat", col = "type", 
        plot_type = "l", size = 1.5, main = "Chimerism values (PB, prob)")
@@ -141,7 +148,7 @@ plot.df <- data.frame(test = c(pw$bmc_cdw, p3$bmc_cd3, p15$bmc_cd15, p34$bmc_cd3
                                rep("cd3", nrow(p3)),
                                rep("cd15", nrow(p15)),
                                rep("cd34", nrow(p34))
-                               ))
+                      ))
 
 ggline(plot.df, x = "test", y = "yhat", col = "type", 
        plot_type = "l", size = 1.5, main = "Chimerism values (BM, prob)")
@@ -157,14 +164,14 @@ for (i in myvars[-1]) {
   
   # Default PDP
   pdp1 <- plotPartial(pd)
-
+  
   pdp2 <- plotPartial(pd, levelplot = FALSE, zlab = "rbin", colorkey = TRUE,
                       screen = list(z = 160, x = -60))
   
   grid.arrange(pdp1, pdp2, nrow = 1) 
   
   print(pdp1)
-
+  
 }
 ```
 

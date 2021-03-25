@@ -5,7 +5,9 @@ knit: (function(input_file, encoding) {
   rmarkdown::render(input_file,
  encoding=encoding,
  output_file=file.path(dirname(input_file), out_dir, 'rf_tuning.html'))})
-author: "Simon Brewer"
+author:
+  - David C. Shyr^[Stanford Medicine, dcshyr@stanford.edu]
+  - Simon Brewer^[University of Utah, simon.brewer@geog.utah.edu]
 date: "3/24/2021"
 output:
   html_document:

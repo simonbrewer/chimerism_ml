@@ -5,7 +5,9 @@ knit: (function(input_file, encoding) {
   rmarkdown::render(input_file,
  encoding=encoding,
  output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
-author: "Simon Brewer and David Shyr"
+author:
+  - David C. Shyr^[Stanford Medicine, dcshyr@stanford.edu]
+  - Simon Brewer^[University of Utah, simon.brewer@geog.utah.edu]
 date: "03/24/2021"
 output:
   html_document:
