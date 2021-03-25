@@ -1,5 +1,5 @@
 ---
-title: "Chimerism dataset final - random forest (probability only)"
+title: "Chimerism dataset final - random forest plots (probability only)"
 knit: (function(input_file, encoding) {
   out_dir <- 'docs';
   rmarkdown::render(input_file,
@@ -29,6 +29,7 @@ set.seed(1234)
 
 ```{r message=FALSE}
 library(tidyverse)
+library(lubridate)
 library(ggpubr)
 library(randomForest)
 library(vip)
@@ -39,7 +40,20 @@ library(pdp)
 
 Read in data
 ```{r}
-all.df <<- read.csv("./data/all.df.csv")
+all.df <- read.csv("./data/all.df.csv")
+```
+
+Convert dates
+```{r}
+all.df$dot <- ymd(all.df$dot)
+all.df$dor <- ymd(all.df$dor)
+all.df$bdate <- ymd(all.df$bdate)
+all.df$pdate <- ymd(all.df$pdate)
+```
+
+Convert all character strings to factors
+```{r}
+all.df <- all.df %>% mutate_if(is.character,as.factor)
 ```
 
 Make outcome a binary variable (0/1 relapse)
@@ -63,6 +77,7 @@ all.df <- all.df[!is.na(all.df$bmc_cdw) & !is.na(all.df$bmc_cd3) &
                    !is.na(all.df$bmc_cd15) & !is.na(all.df$bmc_cd34) &
                    !is.na(all.df$pbc_cdw) & !is.na(all.df$pbc_cd3) & 
                    !is.na(all.df$pbc_cd15) & !is.na(all.df$pbc_cd34),]
+all.df <<- all.df
 ```
 
 ## Random forest
@@ -96,10 +111,6 @@ vip(all.rf, num_features = 20, scale = TRUE)
 ```{r warning=FALSE}
 myvars <- c("txage", "sex", "rstatprtx", "hla", 
             "tbi", "abd_ci_mtx_mmi", "agvhd", "cgvhd",
-            "bmc_cdw", "bmc_cd3", "bmc_cd15", "bmc_cd34",
-            "pbc_cdw", "pbc_cd3", "pbc_cd15", "pbc_cd34")
-
-myvars <- c("txage", 
             "bmc_cdw", "bmc_cd3", "bmc_cd15", "bmc_cd34",
             "pbc_cdw", "pbc_cd3", "pbc_cd15", "pbc_cd34")
 
