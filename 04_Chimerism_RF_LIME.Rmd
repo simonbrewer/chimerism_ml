@@ -1,0 +1,225 @@
+---
+title: "Chimerism dataset final - LIME plots"
+knit: (function(input_file, encoding) {
+  out_dir <- 'docs';
+  rmarkdown::render(input_file,
+ encoding=encoding,
+ output_file=file.path(dirname(input_file), out_dir, 'rf_lime.html'))})
+author:
+  - David C. Shyr^[Stanford Medicine, dcshyr@stanford.edu]
+  - Simon Brewer^[University of Utah, simon.brewer@geog.utah.edu]
+date: "3/24/2021"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    fig_caption: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries
+
+Set random seed for reproducibility
+```{r}
+set.seed(1234)
+```
+
+```{r message=FALSE}
+library(dplyr)
+library(lubridate)
+library(lime)       # ML local interpretation
+library(vip)        # ML global interpretation
+library(pdp)        # ML global interpretation
+library(ggplot2)    # visualization pkg leveraged by above packages
+library(caret)      # ML model building
+```
+
+## Data
+
+Read in data
+```{r}
+all.df <- read.csv("./data/all.df.csv")
+```
+
+Convert dates
+```{r}
+all.df$dot <- ymd(all.df$dot)
+all.df$dor <- ymd(all.df$dor)
+all.df$bdate <- ymd(all.df$bdate)
+all.df$pdate <- ymd(all.df$pdate)
+```
+
+Convert all character strings to factors
+```{r}
+all.df <- all.df %>% mutate_if(is.character,as.factor)
+```
+
+Make outcome a binary variable (0/1 relapse)
+```{r}
+all.df$rbin <- factor(all.df$rbin, levels = c("yes", "no"))
+```
+
+Filter out any tests that are post-relapse
+```{r}
+all.df <- all.df[which(all.df$bdate < all.df$dor | is.na(all.df$dor)), ]
+```
+
+Filter out relapse >720 days
+```{r}
+all.df <- all.df[which(all.df$rbin == "no" | all.df$rtime < 720),]
+```
+
+Filter out any missing tests
+```{r}
+all.df <- all.df[!is.na(all.df$bmc_cdw) & !is.na(all.df$bmc_cd3) & 
+                   !is.na(all.df$bmc_cd15) & !is.na(all.df$bmc_cd34) &
+                   !is.na(all.df$pbc_cdw) & !is.na(all.df$pbc_cd3) & 
+                   !is.na(all.df$pbc_cd15) & !is.na(all.df$pbc_cd34),]
+all.df <<- all.df
+```
+
+## Set up for LIME plots
+
+Sub out the required data
+
+rbin ~ txage + sex + rstatprtx + hla + 
+  tbi + abd_ci_mtx_mmi + agvhd + cgvhd +
+  bmc_cdw + bmc_cd3 + bmc_cd15 + bmc_cd34 + 
+  pbc_cdw + pbc_cd3 + pbc_cd15 + pbc_cd34
+  
+  
+```{r}
+all.df2 <<- all.df %>%
+  select(rbin, txage, sex, rstatprtx, hla, 
+         tbi, abd_ci_mtx_mmi, agvhd, cgvhd, ## Removed e as only 1 level
+         bmc_cdw, bmc_cd3, bmc_cd15, bmc_cd34, 
+         pbc_cdw, pbc_cd3, pbc_cd15, pbc_cd34)
+```
+
+### Set up random forest through caret
+
+```{r}
+# fit.caret <- train(
+#   rbin ~ ., 
+#   data = all.df2, 
+#   method = 'rf',
+#   trControl = trainControl(method = "cv", number = 5, classProbs = TRUE),
+#   tuneLength = 1
+# )
+
+fit.caret <- train(
+  rbin ~ ., 
+  data = all.df2, 
+  method = 'rf'
+)
+```
+
+```{r}
+fit.caret
+```
+Optional rf model --> probably not needed
+```{r}
+fit.rf <- randomForest::randomForest(
+  rbin ~ ., 
+  data = all.df2)
+```
+
+
+## variable importance plots
+
+```{r}
+
+vip(fit.rf, method = "permute", data = all.df2, target = "rbin", 
+    metric = "auc", pred_wrapper = predict, 
+    reference_class = "no", nsim = 10) + ggtitle("ranger: RF")
+
+```
+
+```{r}
+# vis <- vi(fit.ranger, method = "permute", data = all.df2, target = "rbin", 
+#           metric = "auc", pred_wrapper = pfun, 
+#           reference_class = "no", nsim = 100) 
+# vip(vis, geom = "boxplot") # Figure 12
+
+vis <- vi(fit.rf, method = "permute", data = all.df2, target = "rbin", 
+          metric = "auc", pred_wrapper = predict, 
+          reference_class = "no", nsim = 100) 
+vip(vis, geom = "boxplot") # Figure 12
+
+```
+
+```{r}
+p <- ggplot(vis, aes(Variable, Importance))
+p  + 
+  geom_bar(stat="identity", color="black", 
+           position=position_dodge()) + 
+  geom_errorbar(aes(ymin = Importance-StDev, 
+                    ymax = Importance+StDev), width = 0.2) +
+  coord_flip()
+
+p <- ggplot(vis, aes(reorder(Variable, Importance), Importance)) + 
+  geom_bar(stat="identity", color="black", 
+           position=position_dodge()) + 
+  geom_errorbar(aes(ymin = Importance-StDev, 
+                    ymax = Importance+StDev), width = 0.2) +
+  coord_flip() + theme_bw() + scale_x_discrete(name = "Variable")
+print(p)
+#ggsave("./lime_plots/vip.pdf", plot = p)
+```
+
+## Explainers
+
+```{r}
+explainer_caret <- lime(all.df2, fit.caret, n_bins = 5)
+# explainer_rf <- lime(all.df2, fit.rf, n_bins = 5)
+
+summary(explainer_caret)
+# summary(explainer_rf)
+```
+
+Example explainer plot for patient 1
+```{r}
+patientID <- which(all.df$ID == 1)
+
+explanation_caret <- explain(
+  x = all.df2[patientID,], 
+  explainer = explainer_caret, 
+  n_permutations = 5000,
+  dist_fun = "gower",
+  kernel_width = .75,
+  n_features = 10, 
+  feature_select = "highest_weights",
+  labels = "yes"
+)
+
+p1 <- plot_features(explanation_caret)
+
+plot_explanations(explanation_caret)
+```
+
+All patients
+
+```{r}
+all_patients = unique(all.df$ID)
+for (i in 1:length(all_patients)) {
+  patientID <- which(all.df$ID == all_patients[i])
+  
+  explanation_caret <- explain(
+    x = all.df2[patientID,], 
+    explainer = explainer_caret, 
+    n_permutations = 5000,
+    dist_fun = "gower",
+    kernel_width = .75,
+    n_features = 10, 
+    feature_select = "highest_weights",
+    labels = "yes"
+  )
+  
+  p1 <- plot_features(explanation_caret) + ggtitle(paste("Patient", all_patients[i]))
+  print(p1)
+  #ggsave(paste0("./lime_plots/patient_",i,".pdf"), plot = p1)
+}
+```
