@@ -9,7 +9,7 @@ myfun = function(x) {
 }
 
 ## Read data
-chim_file = "./data/Chimerism prediction of relapse internal copy v8 g_mtx_mmf_ci_abd merged.csv"
+chim_file = "./data/Chimerism prediction of relapse internal copy v9 g_mtx_mmf_ci_abd merged 03262021.csv"
 dat = read.csv(chim_file)
 names(dat)
 
@@ -40,14 +40,15 @@ bmc.df$tbi = dat$TBI
 #bmc.df$mtx = dat$MTX
 #bmc.df$mmf = dat$MMF
 #bmc.df$e = dat$E
-bmc.df$abd_ci_mtx_mmi = dat$G.HLA.GVHD.prophy
+# bmc.df$abd_ci_mtx_mmi = dat$G.HLA.GVHD.prophy
+bmc.df$gmgp = dat$Graft.mismatch.GVHD.prophy
 bmc.df$agvhd = dat$aGVHD
 bmc.df$cgvhd = dat$cGVHD
 
 ## Melt to long format
 bmc.df = melt(bmc.df, id.vars = c("ID", "dot", "dor", "txage", "relapse",
                                   "sex", "rstatprtx", "hla", "tbi",
-                                  "abd_ci_mtx_mmi", "agvhd", "cgvhd"), 
+                                  "gmgp", "agvhd", "cgvhd"), 
                 variable.name = "test", value.name = "bdate")
 bmc.df$bdate = mdy(bmc.df$bdate)
 bmc.df$dot = mdy(bmc.df$dot)
@@ -109,14 +110,15 @@ pbc.df$tbi = dat$TBI
 #pbc.df$mtx = dat$MTX
 #pbc.df$mmf = dat$MMF
 #pbc.df$e = dat$E
-pbc.df$abd_ci_mtx_mmi = dat$G.HLA.GVHD.prophy
+#pbc.df$abd_ci_mtx_mmi = dat$G.HLA.GVHD.prophy
+pbc.df$gmgp = dat$Graft.mismatch.GVHD.prophy
 pbc.df$agvhd = dat$aGVHD
 pbc.df$cgvhd = dat$cGVHD
 
 ## Melt to long format
 pbc.df = melt(pbc.df, id.vars = c("ID", "dot", "dor", "txage", "relapse",
                                   "sex", "rstatprtx", "hla", "tbi",
-                                  "abd_ci_mtx_mmi", "agvhd", "cgvhd"), 
+                                  "gmgp", "agvhd", "cgvhd"), 
               variable.name = "test", value.name = "pdate")
 pbc.df$pdate = mdy(pbc.df$pdate)
 pbc.df$dot = mdy(pbc.df$dot)

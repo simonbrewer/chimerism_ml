@@ -76,11 +76,7 @@ prbin = sum(as.numeric(all.df$rbin)-1) / nrow(all.df)
 First set the formula (note we need to drop `e` for this to work)
 ```{r}
 f1 <- rbin ~ txage + sex + rstatprtx + hla + 
-  tbi + abd_ci_mtx_mmi + agvhd + cgvhd +
-  bmc_cdw + bmc_cd3 + bmc_cd15 + bmc_cd34 + 
-  pbc_cdw + pbc_cd3 + pbc_cd15 + pbc_cd34
-f1 <- rbin ~ txage + sex + rstatprtx + hla + 
-  tbi + agvhd + cgvhd +
+  tbi + gmgp + agvhd + cgvhd +
   bmc_cdw + bmc_cd3 + bmc_cd15 + bmc_cd34 + 
   pbc_cdw + pbc_cd3 + pbc_cd15 + pbc_cd34
 ```
