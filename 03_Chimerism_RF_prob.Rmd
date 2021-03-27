@@ -85,7 +85,7 @@ all.df <<- all.df
 First set the formula (this has quite a long list of covariates)
 ```{r}
 f1 <- rbin ~ txage + sex + rstatprtx + hla + 
-  tbi + abd_ci_mtx_mmi + agvhd + cgvhd +
+  tbi + gmgp + agvhd + cgvhd +
   bmc_cdw + bmc_cd3 + bmc_cd15 + bmc_cd34 + 
   pbc_cdw + pbc_cd3 + pbc_cd15 + pbc_cd34
 ```
@@ -110,15 +110,15 @@ vip(all.rf, num_features = 20, scale = TRUE)
 
 ```{r warning=FALSE}
 myvars <- c("txage", "sex", "rstatprtx", "hla", 
-            "tbi", "abd_ci_mtx_mmi", "agvhd", "cgvhd",
+            "tbi", "gmgp", "agvhd", "cgvhd",
             "bmc_cdw", "bmc_cd3", "bmc_cd15", "bmc_cd34",
             "pbc_cdw", "pbc_cd3", "pbc_cd15", "pbc_cd34")
 
 for (i in myvars) {
   
-  p1 <- partial(all.rf, pred.var = i, prob = TRUE,
-                plot = TRUE, rug = TRUE, 
-                plot.engine = "ggplot2") + theme_light() + 
+  p1 <- pdp::partial(all.rf, pred.var = i, prob = TRUE,
+                     plot = TRUE, rug = TRUE, 
+                     plot.engine = "ggplot2") + theme_light() + 
     ggtitle(paste("PDP:", i)) 
   print(p1)
 }
@@ -169,21 +169,29 @@ ggline(plot.df, x = "test", y = "yhat", col = "type",
 ## 2D plots
 
 ```{r warning=FALSE}
-for (i in myvars[-1]) {
+myvars <- c("sex", "rstatprtx", 
+            "tbi", "gmgp", "agvhd", "cgvhd")
+
+for (i in myvars) {
   # Compute partial dependence data for lstat and rm
-  pd <- partial(all.rf, pred.var = c("txage", i), chull = TRUE, prob = TRUE)
+  pd <- pdp::partial(all.rf, pred.var = c("txage", i), chull = TRUE, prob = TRUE)
   
   # Default PDP
-  pdp1 <- plotPartial(pd)
-  
-  pdp2 <- plotPartial(pd, levelplot = FALSE, zlab = "rbin", colorkey = TRUE,
-                      screen = list(z = 160, x = -60))
-  
-  grid.arrange(pdp1, pdp2, nrow = 1) 
-  
-  print(pdp1)
+  # pdp1 <- plotPartial(pd, main = i)
+  # print(pdp1)
+  p1 <- ggplot(pd, aes_string(x = "txage", y = "yhat", col = i)) + 
+    geom_line(size = 1.5) + 
+    ggtitle(paste("PDP:", i)) +
+    theme_bw()
+  print(p1)
   
 }
+```
+
+```{r}
+pd <- pdp::partial(all.rf, pred.var = c("txage", "hla"), chull = TRUE, prob = TRUE)
+pdp1 <- plotPartial(pd, main = "hla")
+print(pdp1)
 ```
 
 ```{r warning=FALSE}
@@ -208,3 +216,23 @@ grid.arrange(pdp1, pdp2, nrow = 1)
 print(pdp1)
 ```
 
+```{r eval=FALSE}
+myvars <- c("bmc_cdw", "bmc_cd3", "bmc_cd15", "bmc_cd34",
+            "pbc_cdw", "pbc_cd3", "pbc_cd15", "pbc_cd34")
+
+for (i in myvars) {
+  # Compute partial dependence data for lstat and rm
+  pd <- partial(all.rf, pred.var = c("txage", i), chull = TRUE, prob = TRUE)
+  
+  # Default PDP
+  pdp1 <- plotPartial(pd, main = i)
+  
+  pdp2 <- plotPartial(pd, levelplot = FALSE, zlab = "rbin", colorkey = TRUE,
+                      screen = list(z = 160, x = -60))
+  
+  grid.arrange(pdp1, pdp2, nrow = 1) 
+  
+  print(pdp1)
+  
+}
+```
