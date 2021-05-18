@@ -86,15 +86,15 @@ all.df <<- all.df
 Sub out the required data
 
 rbin ~ txage + sex + rstatprtx + hla + 
-  tbi + abd_ci_mtx_mmi + agvhd + cgvhd +
-  bmc_cdw + bmc_cd3 + bmc_cd15 + bmc_cd34 + 
-  pbc_cdw + pbc_cd3 + pbc_cd15 + pbc_cd34
-  
-  
+tbi + gmgp + agvhd + cgvhd +
+bmc_cdw + bmc_cd3 + bmc_cd15 + bmc_cd34 + 
+pbc_cdw + pbc_cd3 + pbc_cd15 + pbc_cd34
+
+
 ```{r}
 all.df2 <<- all.df %>%
   select(rbin, txage, sex, rstatprtx, hla, 
-         tbi, abd_ci_mtx_mmi, agvhd, cgvhd, ## Removed e as only 1 level
+         tbi, gmgp, agvhd, cgvhd, ## Removed e as only 1 level
          bmc_cdw, bmc_cd3, bmc_cd15, bmc_cd34, 
          pbc_cdw, pbc_cd3, pbc_cd15, pbc_cd34)
 ```
@@ -200,7 +200,7 @@ p1 <- plot_features(explanation_caret)
 plot_explanations(explanation_caret)
 ```
 
-All patients
+## All patients
 
 ```{r}
 all_patients = unique(all.df$ID)
@@ -223,3 +223,104 @@ for (i in 1:length(all_patients)) {
   #ggsave(paste0("./lime_plots/patient_",i,".pdf"), plot = p1)
 }
 ```
+
+
+## Selected patients
+
+Patient 8 (ID = 5)
+```{r}
+j = 5
+patientID <- which(all.df$ID == j)
+
+## Print one line of table to check
+all.df[patientID[1], ]
+
+for (i in patientID) {
+  explanation_caret <- explain(
+    x = all.df2[i,], 
+    explainer = explainer_caret, 
+    n_permutations = 5000,
+    dist_fun = "gower",
+    kernel_width = .75,
+    n_features = 10, 
+    feature_select = "highest_weights",
+    labels = "yes"
+  )
+  p1 <- plot_features(explanation_caret) + ggtitle(paste("Patient", j))
+  print(p1)
+}
+```
+
+Patient 15 (ID = 43)
+```{r}
+j = 43
+patientID <- which(all.df$ID == j)
+
+## Print one line of table to check
+all.df[patientID[1], ]
+
+for (i in patientID) {
+  explanation_caret <- explain(
+    x = all.df2[i,], 
+    explainer = explainer_caret, 
+    n_permutations = 5000,
+    dist_fun = "gower",
+    kernel_width = .75,
+    n_features = 10, 
+    feature_select = "highest_weights",
+    labels = "yes"
+  )
+  p1 <- plot_features(explanation_caret) + ggtitle(paste("Patient", j))
+  print(p1)
+}
+```
+
+Patient 16 (ID = 8)
+```{r}
+j = 8
+patientID <- which(all.df$ID == j)
+
+## Print one line of table to check
+all.df[patientID[1], ]
+
+for (i in patientID) {
+  explanation_caret <- explain(
+    x = all.df2[i,], 
+    explainer = explainer_caret, 
+    n_permutations = 5000,
+    dist_fun = "gower",
+    kernel_width = .75,
+    n_features = 10, 
+    feature_select = "highest_weights",
+    labels = "yes"
+  )
+  p1 <- plot_features(explanation_caret) + ggtitle(paste("Patient", j))
+  print(p1)
+}
+```
+
+
+Patient 17 (ID = 45)
+```{r}
+j = 45
+patientID <- which(all.df$ID == j)
+
+## Print one line of table to check
+all.df[patientID[1], ]
+
+for (i in patientID) {
+  explanation_caret <- explain(
+    x = all.df2[i,], 
+    explainer = explainer_caret, 
+    n_permutations = 5000,
+    dist_fun = "gower",
+    kernel_width = .75,
+    n_features = 10, 
+    feature_select = "highest_weights",
+    labels = "yes"
+  )
+  p1 <- plot_features(explanation_caret) + ggtitle(paste("Patient", j))
+  print(p1)
+}
+```
+
