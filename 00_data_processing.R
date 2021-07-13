@@ -77,6 +77,9 @@ bmc.df$cd3 = bmc_cd3$prop
 bmc.df$cd15 = bmc_cd15$prop
 bmc.df$cd34 = bmc_cd34$prop
 
+## Drop date of transplant and relapse
+bmc.df <- bmc.df %>%
+  select(-dot, -dor)
 write.csv(bmc.df, "./data/bmc.df.csv", row.names = FALSE)
 
 ## Peripheral blood
@@ -147,8 +150,12 @@ pbc.df$cd3 = pbc_cd3$prop
 pbc.df$cd15 = pbc_cd15$prop
 pbc.df$cd34 = pbc_cd34$prop
 
+## Drop date of transplant and relapse
+pbc.df <- pbc.df %>%
+  select(-dot, -dor)
 write.csv(pbc.df, "./data/pbc.df.csv", row.names = FALSE)
 
+## Merge everything together
 all.df = bmc.df
 all.df$bmc_cdw = all.df$cdw
 all.df$bmc_cd3 = all.df$cd3
