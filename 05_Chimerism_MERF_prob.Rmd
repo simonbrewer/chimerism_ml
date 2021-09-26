@@ -1,0 +1,175 @@
+---
+title: "Chimerism dataset final - Mixed Effects RF"
+knit: (function(input_file, encoding) {
+  out_dir <- 'docs';
+  rmarkdown::render(input_file,
+ encoding=encoding,
+ output_file=file.path(dirname(input_file), out_dir, 'rf_merf.html'))})
+author:
+  - David C. Shyr^[Stanford Medicine, dcshyr@stanford.edu]
+  - Simon Brewer^[University of Utah, simon.brewer@geog.utah.edu]
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    fig_caption: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries
+
+Set random seed for reproducibility
+```{r}
+set.seed(1234)
+```
+
+```{r message=FALSE}
+library(tidyverse)
+library(lubridate)
+library(ggpubr)
+library(randomForest)
+library(vip)
+library(pdp)
+library(htree)
+library(caret)
+library(PresenceAbsence)
+```
+
+## Data
+
+Read in data
+```{r}
+all.df <- read.csv("./data/all.df.csv")
+```
+
+Convert dates
+```{r}
+all.df$dot <- ymd(all.df$dot)
+all.df$dor <- ymd(all.df$dor)
+all.df$bdate <- ymd(all.df$bdate)
+all.df$pdate <- ymd(all.df$pdate)
+```
+
+Convert all character strings to factors
+```{r}
+all.df <- all.df %>% mutate_if(is.character,as.factor)
+```
+
+Make outcome a binary variable (0/1 relapse)
+```{r}
+all.df$rbin <- factor(all.df$rbin, levels = c("yes", "no"))
+```
+
+Make a "time" variable
+```{r}
+all.df$time <- as.numeric(substr(all.df$test, 2, 2))
+```
+
+Filter out any tests that are post-relapse
+```{r}
+all.df <- all.df[which(all.df$bdate < all.df$dor | is.na(all.df$dor)), ]
+```
+
+Filter out relapse >720 days
+```{r}
+all.df <- all.df[which(all.df$rbin == "no" | all.df$rtime < 720),]
+```
+
+Filter out any missing tests
+```{r}
+all.df <- all.df[!is.na(all.df$bmc_cdw) & !is.na(all.df$bmc_cd3) & 
+                   !is.na(all.df$bmc_cd15) & !is.na(all.df$bmc_cd34) &
+                   !is.na(all.df$pbc_cdw) & !is.na(all.df$pbc_cd3) & 
+                   !is.na(all.df$pbc_cd15) & !is.na(all.df$pbc_cd34),]
+all.df <<- all.df
+```
+
+## Hierarchical random forest
+
+First set the formula (note we need to drop `e` for this to work)
+```{r}
+f1 = rbin ~ txage + sex + rstatprtx + g + hla + 
+  tbi + abd + ci + mtx + mmf + e + agvhd + cgvhd +
+  bmc_cdw + bmc_cd3 + bmc_cd15 + bmc_cd34 + 
+  pbc_cdw + pbc_cd3 + pbc_cd15 + pbc_cd34
+f1 = rbin ~ txage + sex + rstatprtx + g + hla + 
+  tbi + abd + ci + mtx + mmf + agvhd + cgvhd +
+  bmc_cdw + bmc_cd3 + bmc_cd15 + bmc_cd34 + 
+  pbc_cdw + pbc_cd3 + pbc_cd15 + pbc_cd34
+```
+
+## Cross validation
+
+Next find patients for cross-validation
+
+```{r}
+patients = unique(sort(all.df$ID))
+npatients = length(patients)
+nfolds = 5
+pfolds = createFolds(all.df$relapse, k = nfolds)
+pfolds
+```
+
+Data frame for model results
+
+```{r}
+mod_results <- data.frame(folds = c(1:nfolds, "mean"),
+                          auc = rep(NA, nfolds+1),
+                          sens = rep(NA, nfolds+1),
+                          spec = rep(NA, nfolds+1)
+)
+```
+
+## $k$-fold loop
+
+```{r}
+for (i in 1:nfolds) {
+  print(i)
+  patient_id <- pfolds[[i]]
+  training <- all.df[-patient_id,]
+  testing <-  all.df[ patient_id,]
+  
+  ## Select predictors
+  train_x <- training %>% 
+    select(txage, rbin, sex, rstatprtx, hla, 
+           tbi, gmgp, agvhd, cgvhd, 
+           bmc_cdw, bmc_cd3, bmc_cd15, bmc_cd34,
+           pbc_cdw, pbc_cd3, pbc_cd15, pbc_cd34)
+  
+  test_x <- testing %>% 
+    select(txage, rbin, sex, rstatprtx, hla, 
+           tbi, gmgp, agvhd, cgvhd, 
+           bmc_cdw, bmc_cd3, bmc_cd15, bmc_cd34,
+           pbc_cdw, pbc_cd3, pbc_cd15, pbc_cd34)
+  
+  control<-list(se = TRUE, ntrees = 500, R = 100)
+  
+  ff<-hrf(x = train_x, id = training$ID,
+         time = training$time, yindx = "rbin",
+         historical = TRUE,
+         control = control)
+  
+  pred_test <- predict_hrf(ff, test_x)
+  
+  df <- data.frame(id = seq(1:nrow(testing)),
+                  obs = as.numeric(testing$rbin)-1,
+                  pred = pred_test[,1])
+  
+  mod_results$auc[i] <- auc(df)$AUC[[1]]
+  ## Get threshold
+  opt_thresh <- optimal.thresholds(df, opt.methods = 3)[2]
+  opt_cmx <- cmx(df, threshold = opt_thresh$pred)
+  mod_results$sens[i] = sensitivity(opt_cmx)$sensitivity[[1]]
+  mod_results$spec[i] = specificity(opt_cmx)$specificity[[1]]
+
+}
+```
+
+```{r}
+mod_results[6, 2:4] = apply(mod_results[, 2:4], 2, mean, na.rm = TRUE)
+knitr::kable(mod_results, digits = 4)
+```
