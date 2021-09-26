@@ -8,7 +8,7 @@ knit: (function(input_file, encoding) {
 author:
   - David C. Shyr^[Stanford Medicine, dcshyr@stanford.edu]
   - Simon Brewer^[University of Utah, simon.brewer@geog.utah.edu]
-date: "03/24/2021"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
   html_document:
     theme: flatly
@@ -23,13 +23,14 @@ output:
 - [Peripheral blood chimerism plots][pbc_plots]: descriptive plots
 - [Random forest tuning][rf_tuning]: tuning and cross validation
 - [Random forest results][rf_predict]: partial dependency plots
-- [Hierarchical Random forest results][rf_merf]: partial dependency plots
+- [Hierarchical Random forest results][rf_merf]: Hierarchical/ME random forest
 - [LIME results][rf_lime]: individual response plots (needs work)
 
 [bmc_plots]: https://simonbrewer.github.io/chimerism_ml/plots_bmc.html
 [pbc_plots]: https://simonbrewer.github.io/chimerism_ml/plots_pbc.html
 [rf_tuning]: https://simonbrewer.github.io/chimerism_ml/rf_tuning.html
 [rf_predict]: https://simonbrewer.github.io/chimerism_ml/rf_predict.html
+[rf_merf]: https://simonbrewer.github.io/chimerism_ml/rf_merf.html
 [rf_lime]: https://simonbrewer.github.io/chimerism_ml/rf_lime.html
 
 
