@@ -1,10 +1,10 @@
 ---
-title: "Chimerism dataset final - Mixed Effects RF"
+title: "Chimerism dataset final - Historical RF"
 knit: (function(input_file, encoding) {
   out_dir <- 'docs';
   rmarkdown::render(input_file,
  encoding=encoding,
- output_file=file.path(dirname(input_file), out_dir, 'rf_merf.html'))})
+ output_file=file.path(dirname(input_file), out_dir, 'rf_hrf.html'))})
 author:
   - David C. Shyr^[Stanford Medicine, dcshyr@stanford.edu]
   - Simon Brewer^[University of Utah, simon.brewer@geog.utah.edu]
