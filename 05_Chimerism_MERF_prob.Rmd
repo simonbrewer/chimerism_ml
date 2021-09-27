@@ -93,10 +93,6 @@ all.df <<- all.df
 First set the formula (note we need to drop `e` for this to work)
 ```{r}
 f1 = rbin ~ txage + sex + rstatprtx + g + hla + 
-  tbi + abd + ci + mtx + mmf + e + agvhd + cgvhd +
-  bmc_cdw + bmc_cd3 + bmc_cd15 + bmc_cd34 + 
-  pbc_cdw + pbc_cd3 + pbc_cd15 + pbc_cd34
-f1 = rbin ~ txage + sex + rstatprtx + g + hla + 
   tbi + abd + ci + mtx + mmf + agvhd + cgvhd +
   bmc_cdw + bmc_cd3 + bmc_cd15 + bmc_cd34 + 
   pbc_cdw + pbc_cd3 + pbc_cd15 + pbc_cd34
@@ -135,29 +131,35 @@ for (i in 1:nfolds) {
   
   ## Select predictors
   train_x <- training %>% 
-    select(txage, rbin, sex, rstatprtx, hla, 
+    select(ID, time, txage, rbin, sex, rstatprtx, hla, 
            tbi, gmgp, agvhd, cgvhd, 
            bmc_cdw, bmc_cd3, bmc_cd15, bmc_cd34,
            pbc_cdw, pbc_cd3, pbc_cd15, pbc_cd34)
   
   test_x <- testing %>% 
-    select(txage, rbin, sex, rstatprtx, hla, 
+    select(ID, time, txage, rbin, sex, rstatprtx, hla, 
            tbi, gmgp, agvhd, cgvhd, 
            bmc_cdw, bmc_cd3, bmc_cd15, bmc_cd34,
            pbc_cdw, pbc_cd3, pbc_cd15, pbc_cd34)
   
   control<-list(se = TRUE, ntrees = 500, R = 100)
   
-  ff<-hrf(x = train_x, id = training$ID,
-         time = training$time, yindx = "rbin",
-         historical = TRUE,
-         control = control)
+  # ff<-hrf(x = train_x, id = training$ID,
+  #        time = training$time, yindx = "rbin",
+  #        mtry = 5,
+  #        historical = TRUE,
+  #        control = control)
+  ff <- hrf(x = train_x, id = train_x$ID,
+            time = train_x$time, yindx = "rbin",
+            ntrees = 500, 
+            mtry = 5,
+            historical = TRUE)
   
   pred_test <- predict_hrf(ff, test_x)
   
   df <- data.frame(id = seq(1:nrow(testing)),
-                  obs = as.numeric(testing$rbin)-1,
-                  pred = pred_test[,1])
+                   obs = as.numeric(testing$rbin)-1,
+                   pred = pred_test[,1])
   
   mod_results$auc[i] <- auc(df)$AUC[[1]]
   ## Get threshold
@@ -165,7 +167,7 @@ for (i in 1:nfolds) {
   opt_cmx <- cmx(df, threshold = opt_thresh$pred)
   mod_results$sens[i] = sensitivity(opt_cmx)$sensitivity[[1]]
   mod_results$spec[i] = specificity(opt_cmx)$specificity[[1]]
-
+  
 }
 ```
 

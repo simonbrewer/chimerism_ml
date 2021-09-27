@@ -1499,7 +1499,7 @@ div.tocify {
 <h1 class="title toc-ignore">Chimerism dataset final - Mixed Effects RF</h1>
 <h4 class="author">David C. Shyr<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a></h4>
 <h4 class="author">Simon Brewer<a href="#fn2" class="footnote-ref" id="fnref2"><sup>2</sup></a></h4>
-<h4 class="date">26 September, 2021</h4>
+<h4 class="date">27 September, 2021</h4>
 
 </div>
 
@@ -1548,10 +1548,6 @@ all.df &lt;&lt;- all.df</code></pre>
 <h2>Hierarchical random forest</h2>
 <p>First set the formula (note we need to drop <code>e</code> for this to work)</p>
 <pre class="r"><code>f1 = rbin ~ txage + sex + rstatprtx + g + hla + 
-  tbi + abd + ci + mtx + mmf + e + agvhd + cgvhd +
-  bmc_cdw + bmc_cd3 + bmc_cd15 + bmc_cd34 + 
-  pbc_cdw + pbc_cd3 + pbc_cd15 + pbc_cd34
-f1 = rbin ~ txage + sex + rstatprtx + g + hla + 
   tbi + abd + ci + mtx + mmf + agvhd + cgvhd +
   bmc_cdw + bmc_cd3 + bmc_cd15 + bmc_cd34 + 
   pbc_cdw + pbc_cd3 + pbc_cd15 + pbc_cd34</code></pre>
@@ -1600,23 +1596,29 @@ pfolds</code></pre>
   
   ## Select predictors
   train_x &lt;- training %&gt;% 
-    select(txage, rbin, sex, rstatprtx, hla, 
+    select(ID, time, txage, rbin, sex, rstatprtx, hla, 
            tbi, gmgp, agvhd, cgvhd, 
            bmc_cdw, bmc_cd3, bmc_cd15, bmc_cd34,
            pbc_cdw, pbc_cd3, pbc_cd15, pbc_cd34)
   
   test_x &lt;- testing %&gt;% 
-    select(txage, rbin, sex, rstatprtx, hla, 
+    select(ID, time, txage, rbin, sex, rstatprtx, hla, 
            tbi, gmgp, agvhd, cgvhd, 
            bmc_cdw, bmc_cd3, bmc_cd15, bmc_cd34,
            pbc_cdw, pbc_cd3, pbc_cd15, pbc_cd34)
   
   control&lt;-list(se = TRUE, ntrees = 500, R = 100)
   
-  ff&lt;-hrf(x = train_x, id = training$ID,
-         time = training$time, yindx = &quot;rbin&quot;,
-         historical = TRUE,
-         control = control)
+  # ff&lt;-hrf(x = train_x, id = training$ID,
+  #        time = training$time, yindx = &quot;rbin&quot;,
+  #        mtry = 5,
+  #        historical = TRUE,
+  #        control = control)
+  ff&lt;-hrf(x = train_x, id = train_x$ID,
+         time = train_x$time, yindx = &quot;rbin&quot;,
+         ntrees = 500, 
+         mtry = 5,
+         historical = TRUE)
   
   pred_test &lt;- predict_hrf(ff, test_x)
   
@@ -1651,39 +1653,39 @@ knitr::kable(mod_results, digits = 4)</code></pre>
 <tbody>
 <tr class="odd">
 <td align="left">1</td>
-<td align="right">0.9320</td>
+<td align="right">0.9184</td>
 <td align="right">0.9048</td>
-<td align="right">1.0000</td>
+<td align="right">1</td>
 </tr>
 <tr class="even">
 <td align="left">2</td>
-<td align="right">0.8730</td>
-<td align="right">0.6667</td>
-<td align="right">1.0000</td>
+<td align="right">0.8810</td>
+<td align="right">0.7619</td>
+<td align="right">1</td>
 </tr>
 <tr class="odd">
 <td align="left">3</td>
-<td align="right">0.8254</td>
-<td align="right">0.9048</td>
-<td align="right">0.6667</td>
+<td align="right">0.8571</td>
+<td align="right">0.6190</td>
+<td align="right">1</td>
 </tr>
 <tr class="even">
 <td align="left">4</td>
-<td align="right">0.9805</td>
-<td align="right">1.0000</td>
-<td align="right">0.8571</td>
+<td align="right">0.9935</td>
+<td align="right">0.9091</td>
+<td align="right">1</td>
 </tr>
 <tr class="odd">
 <td align="left">5</td>
-<td align="right">0.9545</td>
-<td align="right">0.8182</td>
-<td align="right">1.0000</td>
+<td align="right">0.9416</td>
+<td align="right">0.8636</td>
+<td align="right">1</td>
 </tr>
 <tr class="even">
 <td align="left">mean</td>
-<td align="right">0.9131</td>
-<td align="right">0.8589</td>
-<td align="right">0.9048</td>
+<td align="right">0.9183</td>
+<td align="right">0.8117</td>
+<td align="right">1</td>
 </tr>
 </tbody>
 </table>
