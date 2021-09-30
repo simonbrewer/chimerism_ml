@@ -96,6 +96,7 @@ patients = unique(sort(all.df$ID))
 npatients = length(patients)
 nfolds = 5
 pfolds = createFolds(all.df$relapse, k = nfolds)
+pfolds = groupKFold(all.df$ID, k = nfolds)
 pfolds
 
 
@@ -108,14 +109,11 @@ mod_results <- data.frame(folds = c(1:nfolds, "mean"),
 
 
 ## ------------------------------------------------------------------------------------------
-# for (i in 1:nfolds) {
-mod_results = foreach (i = 1:nfolds, .combine = rbind, 
-                       .packages=c('dplyr', 'caret', 'PresenceAbsence')) %dopar%
-  {
+for (i in 1:nfolds) {
   print(i)
   patient_id <- pfolds[[i]]
-  training <- all.df[-patient_id,]
-  testing <-  all.df[ patient_id,]
+  training <- all.df[ patient_id,]
+  testing <-  all.df[-patient_id,]
   
   ## Select predictors
   train_x <- training %>% 
@@ -132,40 +130,33 @@ mod_results = foreach (i = 1:nfolds, .combine = rbind,
   
   control<-list(se = TRUE, ntrees = 500, R = 100)
   
-  # merf1 <- MixRFb(train_x$rbin2, f1, 
-  #                 random = "(1 | ID)", 
-  #                 data = train_x, 
-  #                 ErrorTolerance=0.1, MaxIterations=50,
-  #                 ErrorTolerance0=0.1, MaxIterations0=5, 
-  #                 verbose = TRUE)
-  # 
-  # pred_test <- predict.MixRF(merf1, test_x)  ## Log odds
-  # pred_test <- exp(pred_test) / (1 + exp(pred_test)) ## Prob
-  pred_test <- runif(nrow(test_x))
+  merf1 <- MixRFb(train_x$rbin2, f1,
+                  random = "(1 | ID)",
+                  data = train_x,
+                  ErrorTolerance=0.1, MaxIterations=50,
+                  ErrorTolerance0=0.1, MaxIterations0=5,
+                  verbose = TRUE)
+
+  pred_test <- predict.MixRF(merf1, test_x)  ## Log odds
+  pred_test <- exp(pred_test) / (1 + exp(pred_test)) ## Prob
+  # pred_test <- runif(nrow(test_x))
   
   df <- data.frame(id = seq(1:nrow(testing)),
                    obs = as.numeric(testing$rbin)-1,
                    pred = pred_test)
 
   ## Output  
-  # mod_results$auc[i] <- auc(df)$AUC[[1]]
-  # ## Get threshold
-  # opt_thresh <- optimal.thresholds(df, opt.methods = 3)[2]
-  # opt_cmx <- cmx(df, threshold = opt_thresh$pred)
-  # mod_results$sens[i] = sensitivity(opt_cmx)$sensitivity[[1]]
-  # mod_results$spec[i] = specificity(opt_cmx)$specificity[[1]]
-  
+  mod_results$auc[i] <- auc(df)$AUC[[1]]
+  ## Get threshold
   opt_thresh <- optimal.thresholds(df, opt.methods = 3)[2]
-  opt_cmx <- cmx(df, threshold = opt_thresh$pred)
-  out <- data.frame(folds = i,
-                    auc = auc(df)$AUC[[1]],
-                    sens = sensitivity(opt_cmx)$sensitivity[[1]],
-                    spec = specificity(opt_cmx)$specificity[[1]])
-  out
+  opt_cmx <- cmx(df, threshold = opt_thresh$AdjustedTarget)
+  mod_results$sens[i] = sensitivity(opt_cmx)$sensitivity[[1]]
+  mod_results$spec[i] = specificity(opt_cmx)$specificity[[1]]
+  
 }
 
 
 ## ------------------------------------------------------------------------------------------
-mod_results[6, 2:4] = apply(mod_results[, 2:4], 2, mean, na.rm = TRUE)
+# mod_results[6, 2:4] = apply(mod_results[, 2:4], 2, mean, na.rm = TRUE)
 knitr::kable(mod_results, digits = 4)
 
