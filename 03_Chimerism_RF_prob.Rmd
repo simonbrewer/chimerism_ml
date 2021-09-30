@@ -8,7 +8,7 @@ knit: (function(input_file, encoding) {
 author:
   - David C. Shyr^[Stanford Medicine, dcshyr@stanford.edu]
   - Simon Brewer^[University of Utah, simon.brewer@geog.utah.edu]
-date: "3/24/2021"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
   html_document:
     toc: true
